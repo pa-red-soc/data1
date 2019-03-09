@@ -1,0 +1,61 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"></script>
+<script src="https://unpkg.com/lunr/lunr.js"></script>
+
+<p><input id="pass" type="password"><button id="b_pass">Iniciar</button></p>
+<p><input id="que"><button id="b_buscar">buscar</button><a target="_blank" href="https://lunrjs.com/guides/searching.html">ayuda</a></p>
+<div id="out"></div>
+
+<script>
+	var Path="";
+	var pass="";
+	var idx;
+
+	function decrypt(txt) {
+		return CryptoJS.AES.decrypt(txt,pass).toString(CryptoJS.enc.Utf8);
+	}
+
+	function idx_search(txt) {
+		//SEE: https://lunrjs.com/guides/searching.html
+		return idx.search(txt);
+	}
+
+	function fn_ref(ref) { //U: al formato nombre de archivo, aunque venga de indice
+		var fnIdx= (typeof(ref)=="string" ? ref : ref.ref).match(/(\d+)/g); //A: array de numeros
+		return fnIdx[0].padStart(5,"0")+"_p"+(fnIdx.length>1 ? "_c"+fnIdx[1].padStart(3,"0")+"_"+fnIdx[2].padStart(3,"0"):"") + ".txt";
+	}
+
+	function load_a(ref) {
+		var fn= fn_ref(ref); 
+		return fetch(Path+fn).then(res => res.text()).then(t => decrypt(t));
+	}
+
+
+	function buscar(txt) {
+		var opts= idx_search(txt);
+		out_el.innerHTML="Encontrados "+opts.length+"<br><hr>";
+		opts.forEach(o => {
+			load_a(o).then( t => {
+				var p= t.split(/\n/);
+				var h= '<a target="ver" href="https://www.facebook.com/groups/571508276552938/permalink/'+p[0]+'?comment_id='+p[1]+'">ver</a> '+p[2]+' '+(new Date(p[4]*1000)).toLocaleString()+'<br>'+p.slice(5).join("<br>");
+				out_el.innerHTML+= fn_ref(o)+"<br>"+h+"<hr>";
+			})
+		})
+	}
+
+	function load_idx() {
+		fetch(Path+"idx.txt")
+			.then( res => res.text() )
+			.then( d => { idx= lunr.Index.load(JSON.parse(decrypt(d))); console.log("IDX LOADED"); });
+	}
+
+
+	var pass_el= document.getElementById("pass");
+	var b_idx_el= document.getElementById("b_pass");
+	b_idx_el.onclick= () => { pass= pass_el.value; load_idx(); }
+
+	var out_el= document.getElementById("out");
+	var que_el= document.getElementById("que");
+	var bbuscar_el= document.getElementById("b_buscar");
+	bbuscar_el.onclick= () => { buscar(que_el.value) };
+
+</script>
